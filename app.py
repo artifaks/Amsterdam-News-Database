@@ -171,7 +171,7 @@ def browse():
         LEFT JOIN issue_text it ON it.issue_id = i.id
         WHERE i.year = ? AND i.month > 0
         ORDER BY i.pub_date
-    """, (year,))
+    """, (int(year),))
     all_years = query("SELECT DISTINCT year FROM issues WHERE year > 0 ORDER BY year")
     return render_template("browse.html", issues=issues, all_years=all_years, current_year=int(year))
 
@@ -187,9 +187,13 @@ def issue_detail(issue_id):
     if not issue:
         return "Issue not found", 404
 
-    pages = query("""
-        SELECT page_num, url FROM pages WHERE issue_id = ? ORDER BY page_num
-    """, (issue_id,))
+    # pages table only exists in SQLite (not migrated to Postgres)
+    try:
+        pages = query("""
+            SELECT page_num, url FROM pages WHERE issue_id = ? ORDER BY page_num
+        """, (issue_id,))
+    except Exception:
+        pages = []
 
     return render_template("issue.html", issue=issue, pages=pages)
 
