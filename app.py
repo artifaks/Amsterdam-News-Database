@@ -61,8 +61,8 @@ def index():
         SELECT
             (SELECT COUNT(*) FROM issues)      AS total_issues,
             (SELECT COUNT(*) FROM issue_text)  AS indexed,
-            (SELECT MIN(pub_date) FROM issues WHERE pub_date NOT LIKE '%-00-%') AS earliest,
-            (SELECT MAX(pub_date) FROM issues WHERE pub_date NOT LIKE '%-00-%') AS latest
+            (SELECT MIN(pub_date) FROM issues WHERE month > 0) AS earliest,
+            (SELECT MAX(pub_date) FROM issues WHERE month > 0) AS latest
     """)
     years = query("""
         SELECT year, COUNT(*) as issue_count
@@ -169,7 +169,7 @@ def browse():
                CASE WHEN it.issue_id IS NOT NULL THEN 1 ELSE 0 END as indexed
         FROM issues i
         LEFT JOIN issue_text it ON it.issue_id = i.id
-        WHERE i.year = ? AND i.pub_date NOT LIKE '%-00-%'
+        WHERE i.year = ? AND i.month > 0
         ORDER BY i.pub_date
     """, (year,))
     all_years = query("SELECT DISTINCT year FROM issues WHERE year > 0 ORDER BY year")
