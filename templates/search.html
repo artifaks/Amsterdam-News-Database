@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Search — Amsterdam News Archive{% endblock %}
+{% block content %}
+
+<style>
+  .search-header { margin-bottom: 1.5rem; }
+  .search-header h1 { font-size: 1.4rem; }
+  .search-header .meta { color: var(--muted); font-family: sans-serif; font-size: .85rem; margin-top: .3rem; }
+
+  .filters {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: .3rem; }
+  .filter-group label { color: var(--muted); font-family: sans-serif; font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; }
+  .filter-group select, .filter-group input {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: sans-serif;
+    font-size: .85rem;
+    padding: .35rem .65rem;
+    outline: none;
+  }
+  .filter-group select:focus, .filter-group input:focus { border-color: var(--blue); }
+  .filters button {
+    background: var(--blue);
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: .82rem;
+    font-weight: bold;
+    padding: .38rem .9rem;
+    align-self: flex-end;
+  }
+  .filters button:hover { background: var(--blue-lt); }
+
+  .result-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: .85rem;
+    transition: border-color .15s;
+  }
+  .result-card:hover { border-color: var(--blue); }
+
+  .result-meta {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .6rem;
+    flex-wrap: wrap;
+  }
+  .result-meta .issue-date { color: var(--blue-lt); font-weight: bold; font-size: 1rem; }
+  .result-meta .pages      { color: var(--muted); font-family: sans-serif; font-size: .82rem; }
+
+  .snippet {
+    font-size: .92rem;
+    line-height: 1.7;
+    color: #c0b8a8;
+    margin: .5rem 0;
+    font-style: italic;
+  }
+
+  .result-actions { display: flex; gap: 1rem; margin-top: .75rem; }
+  .result-actions a {
+    font-family: sans-serif;
+    font-size: .8rem;
+    color: var(--blue-lt);
+    text-decoration: none;
+  }
+  .result-actions a:hover { color: #7ec8f5; text-decoration: underline; }
+
+  .no-results {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+    font-family: sans-serif;
+  }
+  .no-results .big { font-size: 3rem; margin-bottom: 1rem; }
+
+  .indexing-note {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: sans-serif;
+    font-size: .82rem;
+    padding: .6rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+</style>
+
+<div class="search-header">
+  {% if query %}
+  <h1>Results for &ldquo;{{ query }}&rdquo;</h1>
+  <div class="meta">
+    {% if total > 0 %}
+      {{ total }} match{{ 'es' if total != 1 }} across {{ indexed }} indexed issues
+    {% else %}
+      No matches found in {{ indexed }} indexed issues
+    {% endif %}
+  </div>
+  {% else %}
+  <h1>Search the Archive</h1>
+  {% endif %}
+</div>
+
+<form action="/search" method="get">
+  <div class="filters">
+    <div class="filter-group">
+      <label>Search</label>
+      <input type="search" name="q" value="{{ query }}" style="width:260px" autofocus>
+    </div>
+    <div class="filter-group">
+      <label>Year</label>
+      <select name="year">
+        <option value="">All years</option>
+        {% for y in years %}
+        <option value="{{ y['year'] }}" {% if year == y['year']|string %}selected{% endif %}>{{ y['year'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit">Search</button>
+  </div>
+</form>
+
+{% if indexed > 0 and indexed < 1000 %}
+<div class="indexing-note">
+  ⏳ {{ indexed }} issues indexed so far — more results will appear as indexing continues.
+</div>
+{% endif %}
+
+{% if results %}
+  {% for r in results %}
+  <div class="result-card">
+    <div class="result-meta">
+      <span class="issue-date">{{ r['pub_date'] }}</span>
+      {% if r['page_count'] %}
+      <span class="badge">{{ r['page_count'] }} pages</span>
+      {% endif %}
+    </div>
+
+    {% if r['snippet'] %}
+    <div class="snippet">{{ r['snippet'] | safe }}</div>
+    {% endif %}
+
+    <div class="result-actions">
+      <a href="/issue/{{ r['id'] }}">Read full text →</a>
+      <a href="{{ r['url'] }}" target="_blank">Browse pages on Fulton History ↗</a>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+    <a href="?q={{ query | urlencode }}&year={{ year }}&page={{ page - 1 }}">← Prev</a>
+    {% endif %}
+
+    {% for p in range([1, page-2]|max, [pages+1, page+3]|min) %}
+    {% if p == page %}
+    <span class="current">{{ p }}</span>
+    {% else %}
+    <a href="?q={{ query | urlencode }}&year={{ year }}&page={{ p }}">{{ p }}</a>
+    {% endif %}
+    {% endfor %}
+
+    {% if page < pages %}
+    <a href="?q={{ query | urlencode }}&year={{ year }}&page={{ page + 1 }}">Next →</a>
+    {% endif %}
+
+    <span class="muted" style="margin-left:.5rem">Page {{ page }} of {{ pages }}</span>
+  </div>
+  {% endif %}
+
+{% elif query %}
+  <div class="no-results">
+    <div class="big">✦</div>
+    <p>No results for &ldquo;{{ query }}&rdquo;</p>
+    <p style="margin-top:.5rem;font-size:.85rem">
+      Try different keywords, or check back once more issues are indexed.
+    </p>
+  </div>
+{% endif %}
+
+{% endblock %}

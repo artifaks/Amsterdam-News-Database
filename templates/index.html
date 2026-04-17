@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}New York Amsterdam News Archive{% endblock %}
+{% block content %}
+
+<style>
+  .hero { text-align: center; padding: 3rem 0 2rem; }
+  .hero h1 { font-size: 2.4rem; letter-spacing: .05em; text-transform: uppercase; }
+  .hero p  { color: var(--muted); font-family: sans-serif; margin-top: .5rem; font-size: .95rem; }
+
+  .search-big { display: flex; gap: .5rem; max-width: 600px; margin: 2rem auto; }
+  .search-big input {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--blue);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: Georgia, serif;
+    font-size: 1.05rem;
+    padding: .7rem 1.1rem;
+    outline: none;
+  }
+  .search-big input::placeholder { color: var(--muted); }
+  .search-big button {
+    background: var(--blue);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: .9rem;
+    font-weight: bold;
+    padding: .7rem 1.4rem;
+    letter-spacing: .04em;
+  }
+  .search-big button:hover { background: var(--blue-lt); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.2rem;
+    text-align: center;
+  }
+  .stat-card .num {
+    font-size: 1.8rem;
+    color: var(--blue-lt);
+    font-family: sans-serif;
+    font-weight: bold;
+  }
+  .stat-card .lbl {
+    font-family: sans-serif;
+    font-size: .75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-top: .25rem;
+  }
+
+  .indexing-banner {
+    background: var(--panel);
+    border: 1px solid var(--blue);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .indexing-banner p { font-family: sans-serif; font-size: .85rem; color: var(--muted); margin-bottom: .5rem; }
+
+  .year-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .6rem;
+    margin-top: 1.5rem;
+  }
+  .year-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .9rem 1rem;
+    text-decoration: none;
+    transition: border-color .15s;
+  }
+  .year-card:hover { border-color: var(--blue); text-decoration: none; }
+  .year-card .year-num { color: var(--blue-lt); font-size: 1.1rem; font-weight: bold; font-family: sans-serif; }
+  .year-card .year-count { color: var(--muted); font-family: sans-serif; font-size: .78rem; margin-top: .2rem; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  .quick-searches { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 2rem; }
+  .quick-searches a {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-family: sans-serif;
+    font-size: .8rem;
+    padding: .3rem .85rem;
+    text-decoration: none;
+    transition: border-color .15s, color .15s;
+  }
+  .quick-searches a:hover { border-color: var(--blue); color: var(--blue-lt); text-decoration: none; }
+
+  .source-note {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: sans-serif;
+    font-size: .82rem;
+    padding: .7rem 1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+</style>
+
+<div class="hero">
+  <h1>New York <span style="color:var(--blue-lt)">Amsterdam</span> News</h1>
+  <p>America's leading Black newspaper &bull; 1963–1988 &bull; {{ stats['total_issues'] or '—' }} issues</p>
+</div>
+
+<form action="/search" method="get">
+  <div class="search-big">
+    <input type="search" name="q" placeholder="Search across all issues…" autofocus>
+    <button type="submit">Search</button>
+  </div>
+</form>
+
+<div class="quick-searches">
+  <span style="color:var(--muted);font-family:sans-serif;font-size:.8rem;align-self:center;">Try:</span>
+  {% for term in ["civil rights", "Malcolm X", "Harlem", "Martin Luther King",
+                  "police brutality", "Black Power", "community", "education"] %}
+  <a href="/search?q={{ term | urlencode }}">{{ term }}</a>
+  {% endfor %}
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="num">{{ stats['total_issues'] or '—' }}</div>
+    <div class="lbl">Issues Found</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">1963–1988</div>
+    <div class="lbl">Years Covered</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="indexed-num">{{ stats['indexed'] or 0 }}</div>
+    <div class="lbl">Issues Indexed</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">~26</div>
+    <div class="lbl">Years of Coverage</div>
+  </div>
+</div>
+
+{% if stats['indexed'] and stats['total_issues'] and stats['indexed'] < stats['total_issues'] %}
+<div class="indexing-banner">
+  <p id="progress-label">{{ stats['indexed'] }} of {{ stats['total_issues'] }} issues indexed
+    ({{ ((stats['indexed'] / stats['total_issues']) * 100) | int }}%) — indexing in progress…</p>
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progress-bar"
+         style="width: {{ ((stats['indexed'] / stats['total_issues']) * 100) | int }}%"></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="source-note">
+  Issues sourced from <a href="https://www.fultonhistory.com" target="_blank">Fulton History</a>
+  (fultonhistory.com), a free public archive of historical newspapers. Coverage: 1963–1988,
+  with gaps in 1975 and 1985.
+</div>
+
+<hr class="divider">
+<h2>Browse by Year</h2>
+
+<div class="year-grid">
+  {% for y in years %}
+  <a class="year-card" href="/browse?year={{ y['year'] }}">
+    <div class="year-num">{{ y['year'] }}</div>
+    <div class="year-count">{{ y['issue_count'] }} issues</div>
+  </a>
+  {% endfor %}
+</div>
+
+<script>
+  function updateIndexedCount() {
+    fetch('/api/progress')
+      .then(r => r.json())
+      .then(d => {
+        const el = document.getElementById('indexed-num');
+        if (el) el.textContent = d.indexed;
+      });
+  }
+  setInterval(updateIndexedCount, 8000);
+</script>
+
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Browse {{ current_year }} — Amsterdam News Archive{% endblock %}
+{% block content %}
+
+<style>
+  .browse-layout { display: grid; grid-template-columns: 130px 1fr; gap: 1.5rem; }
+
+  .year-sidebar h3 {
+    color: var(--muted);
+    font-family: sans-serif;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: .75rem;
+  }
+  .year-list { list-style: none; max-height: 80vh; overflow-y: auto; }
+  .year-list li a {
+    display: block;
+    border-radius: 4px;
+    color: var(--text);
+    font-family: sans-serif;
+    font-size: .85rem;
+    padding: .3rem .65rem;
+    text-decoration: none;
+    transition: background .12s, color .12s;
+  }
+  .year-list li a:hover { background: var(--panel); color: var(--blue-lt); }
+  .year-list li a.active {
+    background: var(--panel);
+    border-left: 2px solid var(--blue);
+    color: var(--blue-lt);
+    font-weight: bold;
+    padding-left: .5rem;
+  }
+
+  .issue-list { display: flex; flex-direction: column; gap: .55rem; }
+
+  .issue-row {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: .75rem 1rem;
+    transition: border-color .15s;
+  }
+  .issue-row:hover { border-color: var(--blue); }
+  .issue-row.not-indexed { opacity: .55; }
+
+  .issue-row .date  { color: var(--blue-lt); font-family: sans-serif; font-size: .9rem; font-weight: bold; }
+  .issue-row .status { }
+  .issue-row .actions { display: flex; gap: .75rem; justify-content: flex-end; }
+  .issue-row .actions a {
+    color: var(--blue-lt);
+    font-family: sans-serif;
+    font-size: .78rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .issue-row .actions a:hover { color: #7ec8f5; text-decoration: underline; }
+  .issue-row .actions .dim { color: var(--muted); cursor: default; font-family: sans-serif; font-size: .78rem; }
+
+  .page-header { margin-bottom: 1.25rem; }
+  .page-header h1 { font-size: 1.4rem; }
+  .page-header .meta { color: var(--muted); font-family: sans-serif; font-size: .85rem; margin-top: .3rem; }
+</style>
+
+<div class="browse-layout">
+
+  <aside class="year-sidebar">
+    <h3>Years</h3>
+    <ul class="year-list">
+      {% for y in all_years %}
+      <li>
+        <a href="/browse?year={{ y['year'] }}"
+           class="{{ 'active' if y['year'] == current_year }}">
+          {{ y['year'] }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <div>
+    <div class="page-header">
+      <h1>{{ current_year }}</h1>
+      <div class="meta">
+        {{ issues | length }} issues
+        &nbsp;·&nbsp;
+        {{ issues | selectattr('indexed', 'equalto', 1) | list | length }} indexed
+      </div>
+    </div>
+
+    {% if issues %}
+    <div class="issue-list">
+      {% for issue in issues %}
+      <div class="issue-row {{ '' if issue['indexed'] else 'not-indexed' }}">
+        <div class="date">{{ issue['pub_date'] }}</div>
+        <div class="status">
+          {% if issue['indexed'] %}
+            <span class="badge blue">✓ Indexed</span>
+            {% if issue['page_count'] %}
+            <span class="badge" style="margin-left:.3rem">{{ issue['page_count'] }}pp</span>
+            {% endif %}
+          {% else %}
+            <span class="badge">Pending</span>
+          {% endif %}
+        </div>
+        <div class="actions">
+          {% if issue['indexed'] %}
+          <a href="/issue/{{ issue['id'] }}">Full text</a>
+          {% else %}
+          <span class="dim">—</span>
+          {% endif %}
+          <a href="{{ issue['url'] }}" target="_blank">Fulton ↗</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No issues found for {{ current_year }}.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

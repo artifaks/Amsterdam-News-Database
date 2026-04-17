@@ -1,0 +1,11 @@
+# Amsterdam News Database — gitignore
+*.pdf
+*.log
+*.log.txt
+build_log.txt
+__pycache__/
+*.pyc
+.env
+nohup.out
+# Uncomment below to exclude the DB (keep commented so Railway gets it)
+# amsterdam_news.db

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}{{ issue['pub_date'] }} — Amsterdam News Archive{% endblock %}
+{% block content %}
+
+<style>
+  .issue-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .issue-header h1 { font-size: 1.5rem; }
+  .issue-header .sub {
+    color: var(--muted);
+    font-family: sans-serif;
+    font-size: .85rem;
+    margin-top: .4rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .actions-bar { display: flex; gap: .75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .btn {
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: .83rem;
+    font-weight: bold;
+    padding: .45rem 1rem;
+    text-decoration: none;
+    letter-spacing: .03em;
+  }
+  .btn-blue    { background: var(--blue); color: #fff; border: none; }
+  .btn-blue:hover { background: var(--blue-lt); text-decoration: none; color: #fff; }
+  .btn-outline { background: transparent; color: var(--blue-lt); border: 1px solid var(--blue); }
+  .btn-outline:hover { background: var(--panel); text-decoration: none; }
+
+  .pages-list {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .pages-list h3 { margin-bottom: .75rem; font-size: .9rem; }
+  .page-links { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .page-links a {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: sans-serif;
+    font-size: .78rem;
+    padding: .25rem .6rem;
+    text-decoration: none;
+    transition: border-color .15s, color .15s;
+  }
+  .page-links a:hover { border-color: var(--blue); color: var(--blue-lt); text-decoration: none; }
+
+  .search-in-issue {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+  }
+  .search-in-issue label { color: var(--muted); font-family: sans-serif; font-size: .82rem; white-space: nowrap; }
+  .search-in-issue input {
+    background: var(--charcoal);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: sans-serif;
+    font-size: .85rem;
+    padding: .35rem .7rem;
+    flex: 1;
+    outline: none;
+  }
+  .search-in-issue input:focus { border-color: var(--blue); }
+  .search-in-issue button {
+    background: var(--blue);
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: .8rem;
+    font-weight: bold;
+    padding: .35rem .85rem;
+  }
+
+  .full-text {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.5rem 2rem;
+    font-size: .9rem;
+    line-height: 1.85;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #ccc4b4;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .not-indexed-msg {
+    text-align: center;
+    padding: 3rem;
+    color: var(--muted);
+    font-family: sans-serif;
+  }
+  .not-indexed-msg .big { font-size: 2.5rem; margin-bottom: 1rem; }
+
+  mark {
+    background: var(--mark-bg);
+    color: var(--mark-fg);
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+</style>
+
+<div class="issue-header">
+  <h1>New York Amsterdam News — {{ issue['pub_date'] }}</h1>
+  <div class="sub">
+    <span>{{ issue['year'] }}</span>
+    {% if issue['page_count'] %}<span class="badge">{{ issue['page_count'] }} pages</span>{% endif %}
+    {% if issue['indexed_at'] %}<span class="badge blue">✓ Indexed</span>{% endif %}
+  </div>
+</div>
+
+<div class="actions-bar">
+  <a class="btn btn-outline" href="/browse?year={{ issue['year'] }}">← Back to {{ issue['year'] }}</a>
+  <a class="btn btn-outline" href="/search">Search Archive</a>
+  <a class="btn btn-blue"    href="{{ issue['url'] }}" target="_blank">Browse pages on Fulton History ↗</a>
+</div>
+
+{% if pages %}
+<div class="pages-list">
+  <h3>Individual Pages</h3>
+  <div class="page-links">
+    {% for p in pages %}
+    <a href="{{ p['url'] }}" target="_blank">Page {{ p['page_num'] }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if issue['full_text'] %}
+
+<div class="search-in-issue">
+  <label>Find on page:</label>
+  <input type="text" id="find-input" placeholder="Keyword…">
+  <button onclick="highlightText()">Find</button>
+  <button onclick="clearHighlights()" style="background:var(--panel);border:1px solid var(--border);color:var(--text);">Clear</button>
+  <span id="match-count" style="color:var(--muted);font-family:sans-serif;font-size:.78rem;margin-left:.5rem;"></span>
+</div>
+
+<div class="full-text" id="full-text">{{ issue['full_text'] | e }}</div>
+
+<script>
+  function highlightText() {
+    const input = document.getElementById('find-input').value.trim();
+    const box   = document.getElementById('full-text');
+    const count = document.getElementById('match-count');
+    if (!input) return;
+    clearHighlights();
+
+    const regex  = new RegExp(input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+    const nodes  = [];
+    let n;
+    while ((n = walker.nextNode())) nodes.push(n);
+
+    let matches = 0;
+    nodes.forEach(node => {
+      if (!node.nodeValue.match(regex)) return;
+      const span = document.createElement('span');
+      span.innerHTML = node.nodeValue.replace(regex, m => {
+        matches++;
+        return `<mark>${m}</mark>`;
+      });
+      node.replaceWith(span);
+    });
+
+    count.textContent = matches ? `${matches} match${matches !== 1 ? 'es' : ''}` : 'No matches';
+    const first = box.querySelector('mark');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function clearHighlights() {
+    const box = document.getElementById('full-text');
+    box.querySelectorAll('span').forEach(s => s.replaceWith(document.createTextNode(s.textContent)));
+    document.getElementById('match-count').textContent = '';
+    box.normalize();
+  }
+
+  document.getElementById('find-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') highlightText();
+  });
+</script>
+
+{% else %}
+<div class="not-indexed-msg">
+  <div class="big">⏳</div>
+  <p>This issue hasn't been indexed yet.</p>
+  <p style="margin-top:.5rem;font-size:.85rem">
+    <a href="{{ issue['url'] }}" target="_blank">Browse individual pages on Fulton History ↗</a>
+  </p>
+</div>
+{% endif %}
+
+{% endblock %}
